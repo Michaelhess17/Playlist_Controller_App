@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Controller</title>
+    <style>
+        /* Wedding Color Palette */
+        :root {
+            --maroon: #591927;
+            --beige: #B07D6C;
+            --sage-green: #848566;
+            --burnt-orange: #B2673F;
+            --light-beige: #f5ebe0; /* A lighter shade for background */
+            --white: #ffffff;
+            --text-dark: #333333;
+            --text-light: #f8f8f8;
+            --border-color: #dcdcdc;
+        }
+
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+            background-color: var(--light-beige);
+            color: var(--text-dark);
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: var(--white);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+        }
+        h1, h2 {
+            text-align: center;
+            color: var(--maroon);
+            margin-bottom: 1em;
+        }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.5em; margin-top: 1.5em; }
+
+        .controls, .status, .playlists {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: #fdfdfd; /* Slightly off-white */
+        }
+
+        /* --- Buttons --- */
+        .controls button, .playlist-header button {
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            color: var(--text-light);
+            border: none;
+            border-radius: 5px;
+            font-size: 0.95em;
+            transition: background-color 0.2s ease;
+        }
+        .controls button:hover, .playlist-header button:hover {
+             opacity: 0.9;
+        }
+
+        /* Default / Play */
+        .play-button { background-color: var(--sage-green); }
+        .play-button:hover { background-color: #6f7055; }
+
+        /* Stop */
+        #stop-button { background-color: var(--maroon); }
+        #stop-button:hover { background-color: #45141e; }
+
+        /* Pause/Resume */
+        #pause-button { background-color: var(--burnt-orange); }
+        #pause-button:hover { background-color: #9e5a37; }
+
+        /* Next */
+        #next-button { background-color: var(--beige); color: var(--white); /* Beige needs white text */ }
+        #next-button:hover { background-color: #9a6f5f; }
+
+        .controls div { margin-top: 15px; }
+
+        /* --- Playlist Styling --- */
+        ul#playlist-list { list-style: none; padding: 0; }
+        .playlist-item {
+            background: var(--white);
+            margin: 12px 0;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: default;
+            transition: box-shadow 0.2s ease;
+        }
+        .playlist-item:hover {
+            box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+        }
+
+        .playlist-header {
+            background: #f7f7f7;
+            /* background: linear-gradient(to bottom, var(--white), #f0f0f0); /* Subtle gradient */
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 6px 6px 0 0;
+        }
+        .playlist-item.active .playlist-header {
+            background: #e8f0e8; /* Light green tint when active */
+            /* border-left: 4px solid var(--sage-green); /* Accent border */
+            /* margin-left: -4px; */
+        }
+
+        .playlist-header-left {
+            display: flex;
+            align-items: center;
+            cursor: pointer; /* Change cursor to pointer for expand/collapse */
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+        .playlist-title {
+            font-weight: bold;
+            margin-left: 8px;
+            color: #444;
+        }
+        .playlist-item.active .playlist-title {
+             color: var(--sage-green);
+        }
+
+        .playlist-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .playlist-volume-label,
+        .playlist-auto-advance-label {
+            font-size: 0.8em;
+            margin-right: 4px;
+            color: #555;
+        }
+        .playlist-volume-input {
+            width: 45px;
+            padding: 4px;
+            text-align: right;
+            margin-right: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .playlist-auto-advance-checkbox {
+            margin-right: 8px;
+            cursor: pointer;
+            vertical-align: middle; /* Align checkbox better */
+        }
+
+        /* Hide default number input spinners */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+
+        .song-list {
+            padding: 10px 15px 10px 35px; /* Indent songs more */
+            display: none; /* Hidden by default */
+            max-height: 250px; /* Increased height */
+            overflow-y: auto;
+            background: var(--white);
+            border-top: 1px dashed var(--border-color); /* Dashed separator */
+            border-radius: 0 0 6px 6px; /* Rounded bottom corners */
+        }
+        .playlist-item.active .song-list {
+            display: block; /* Show songs for active playlist */
+        }
+        .song-item {
+            padding: 8px 5px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            background-color: var(--white);
+            cursor: grab;
+            transition: background-color 0.1s ease;
+        }
+        .song-item:last-child {
+            border-bottom: none;
+        }
+         .song-item.Playing {
+             font-weight: bold;
+             color: var(--maroon);
+             background-color: #fff8f8; /* Very light red tint */
+        }
+        .song-item.dragging {
+             opacity: 0.6;
+             background: var(--light-beige);
+        }
+
+        /* --- Status & Messages --- */
+        .status p { margin: 8px 0; font-size: 1.0em; }
+        .status strong { color: var(--text-dark); font-weight: 600; margin-left: 5px; }
+
+        #message {
+            margin-top: 20px;
+            padding: 12px 15px;
+            border: 1px solid;
+            color: var(--sage-green);
+            background-color: #eaf3ea;
+            border-color: #c8e6c9;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+        }
+        #error-message {
+            color: var(--maroon);
+            background-color: #f8eeee;
+            border-color: #f5c6cb;
+        }
+
+        /* --- Drag Handles & Cursors --- */
+        .drag-handle {
+             font-size: 1.2em;
+             color: #aaa;
+             margin-right: 0px;
+             cursor: grab;
+             line-height: 1;
+        }
+
+        /* --- Edit Icons --- */
+        .edit-icon {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-left: 8px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s ease;
+        }
+        .edit-icon:hover {
+            opacity: 1;
+            color: var(--sage-green);
+        }
+
+        /* --- Rename Input --- */
+        .rename-input {
+            font-size: 1em;
+            padding: 2px 4px;
+            border: 1px solid var(--sage-green);
+            border-radius: 3px;
+            background-color: var(--white);
+            color: var(--text-dark);
+            font-family: inherit;
+        }
+
+        /* --- Playlist Controls --- */
+        .playlist-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .playlist-control-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .playlist-volume-input {
+            width: 50px;
+            padding: 2px 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        .playlist-volume-label, .playlist-checkbox-label, .playlist-select-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .playlist-auto-advance-checkbox, .playlist-loop-checkbox {
+            margin: 0;
+            cursor: pointer;
+        }
+        .playlist-transition-select {
+            font-size: 0.9em;
+            padding: 1px 2px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            background-color: white;
+        }
+        .song-item .drag-handle {
+            font-size: 1.0em;
+            margin-right: 8px;
+        }
+        .playlist-header-left:active {
+            cursor: grabbing;
+        }
+        .song-item:active {
+            cursor: grabbing;
+        }
+
+        /* --- Sliders --- */
+        .volume-control, .seek-control {
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
+        }
+        label[for="volume-slider"], label[for="seek-slider"] {
+            margin-right: 10px;
+            font-size: 0.9em;
+            min-width: 50px; /* Align labels */
+        }
+        input[type="range"] {
+            cursor: pointer;
+            flex-grow: 1;
+            margin: 0 10px;
+            accent-color: var(--sage-green); /* Theme the slider color */
+        }
+        #volume-value, #current-time, #total-time {
+            font-size: 0.9em;
+            min-width: 40px; /* Prevent layout shifts */
+            text-align: right;
+        }
+        #seek-slider {
+            width: auto; /* Let flexbox handle width */
+        }
+        #seek-slider:disabled {
+             accent-color: #cccccc;
+             cursor: default;
+        }
+
+        /* --- Responsive Design --- */
+        @media (max-width: 600px) {
+            body {
+                margin: 1em; /* Reduce body margin */
+            }
+            .container {
+                padding: 15px; /* Reduce container padding */
+            }
+            h1 { font-size: 1.8em; }
+            h2 { font-size: 1.3em; }
+
+            .controls button, .playlist-header button {
+                 padding: 8px 12px; /* Slightly smaller buttons */
+                 font-size: 0.9em;
+            }
+
+            .playlist-header {
+                flex-direction: column; /* Stack title and controls */
+                align-items: flex-start; /* Align stacked items left */
+                padding: 10px; /* Adjust padding */
+            }
+
+            .playlist-header-left {
+                 margin-bottom: 8px; /* Add space below title when stacked */
+                 margin-right: 0; /* Remove right margin */
+            }
+
+            .playlist-controls {
+                 flex-wrap: wrap;
+                 gap: 8px;
+            }
+
+            .playlist-volume-input {
+                margin-right: 6px; /* Adjust spacing */
+            }
+            .playlist-auto-advance-checkbox {
+                margin-right: 6px;
+            }
+
+            .song-list {
+                padding: 8px 10px 8px 25px; /* Adjust song list padding */
+            }
+        }
+
+        /* --- Debug Information --- */
+        .debug-info {
+            margin-top: 20px;
+            padding: 12px 15px;
+            border: 1px solid;
+            color: var(--sage-green);
+            background-color: #eaf3ea;
+            border-color: #c8e6c9;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .debug-info h2 {
+            color: var(--maroon);
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        #debug-output {
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Music Controller</h1>
+
+        <div class="status">
+            <h2>Status</h2>
+            <p>State: <strong id="state">--</strong></p>
+            <p>Current Playlist: <strong id="current-playlist">--</strong></p>
+            <p>Current Song: <strong id="current-song">--</strong></p>
+            <p>Volume: <strong id="volume">--</strong></p>
+        </div>
+
+        <div class="controls">
+            <h2>Controls</h2>
+            <button id="pause-button">Pause/Resume</button>
+            <button id="stop-button">Stop</button>
+            <button id="next-button">Next Song</button>
+            <button id="next-playlist-button">Next Playlist</button>
+            <div class="volume-control">
+                <label for="volume-slider">Volume:</label>
+                <input type="range" id="volume-slider" name="volume" min="0" max="100" value="50">
+                <span id="volume-value">50%</span>
+            </div>
+            <div class="seek-control">
+                <label for="seek-slider">Seek:</label>
+                <input type="range" id="seek-slider" name="seek" min="0" max="100" value="0" step="0.1" style="width: 70%;" disabled>
+                <span id="current-time">0:00</span> / <span id="total-time">0:00</span>
+            </div>
+        </div>
+
+        <div class="playlists">
+            <h2>Playlists (Folders)</h2>
+            <p><small>Drag handles (<span class="drag-handle">&nbsp;&#x2630;&nbsp;</span>) to reorder playlists or songs. Click playlist name to expand/collapse songs. Click 'Play' button to start playlist. Check 'AA' to enable auto-advance for that playlist.</small></p>
+            <ul id="playlist-list">
+                {# Playlist items will be populated dynamically by JavaScript #}
+            </ul>
+        </div>
+
+        <div id="message"></div>
+
+        {% if show_debug_info %}
+        <div class="debug-info">
+            <h2>Debug Information</h2>
+            <pre id="debug-output"></pre>
+        </div>
+        {% else %}
+        <div class="span">
+            <!---
+            <h2>Debug Information (Limited)</h2>
+            <p>Debug information is hidden. Set <code>SHOW_DEBUG_INFO=True</code> for full details.</p>
+            -->
+        </div>
+        {% endif %}
+
+    </div>
+
+    <script>
+        const playlistListUl = document.getElementById('playlist-list'); // Renamed from playlistList
+        const messageDiv = document.getElementById('message');
+        const volumeSlider = document.getElementById('volume-slider');
+        const volumeValueSpan = document.getElementById('volume-value');
+        const seekSlider = document.getElementById('seek-slider');
+        const currentTimeSpan = document.getElementById('current-time');
+        const totalTimeSpan = document.getElementById('total-time');
+
+        // State variables
+        let playlistData = { playlists: [], playlist_details: {}, current_playlist: null }; // Store fetched data
+        let currentSongBasename = null; // Store just the basename for comparison
+        let currentPlaylistSongsFullPaths = {}; // Store full paths keyed by playlist name { playlistName: ["/path/to/song1.mp3", ...] }
+        let draggedElement = null; // Can be playlist header or song item
+        let isDraggingSeek = false;
+
+        // --- API Call Function ---
+        async function sendCommand(endpoint, method = 'POST', body = null) {
+            // Ensure message div is cleared before sending command
+            messageDiv.style.display = 'none';
+            messageDiv.textContent = '';
+            try {
+                const options = {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                if (body) { options.body = JSON.stringify(body); }
+
+                console.log(`Sending command: ${method} ${endpoint}`, body);
+                const response = await fetch(endpoint, options);
+                const responseData = await response.json(); // Always try to parse JSON
+
+                if (!response.ok) {
+                    // Use error message from backend if available
+                    const errorMsg = responseData?.message || `HTTP error! Status: ${response.status}`;
+                    throw new Error(errorMsg);
+                }
+
+                console.log(`Command successful: ${method} ${endpoint}`, responseData);
+                displayMessage(responseData.message || `${method} ${endpoint} successful.`, false);
+
+                // Refresh status after command, EXCEPT after seek (rely on interval)
+                // Also skip immediate refresh after reordering, as status update interval will handle it
+                // and avoid potential race conditions with saving/loading data
+                if (endpoint !== '/seek' && endpoint !== '/reorder' && endpoint !== '/reorder_songs') {
+                    await updateStatus(); // Make sure status is updated after command
+                }
+                return responseData; // Return data on success
+            } catch (error) {
+                console.error(`Error sending command ${method} ${endpoint}:`, error);
+                displayMessage(`Error: ${error.message || 'Unknown error'}`, true);
+                // Rethrow or handle as needed
+                // throw error; // Optionally rethrow if calling code needs to know about failure
+            }
+        }
+
+        // --- Format time helper ---
+        function formatTime(totalSeconds) {
+            if (isNaN(totalSeconds) || totalSeconds < 0) {
+                return '0:00';
+            }
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // --- Capitalize first letter helper ---
+        function capitalizeFirstLetter(string) {
+            if (!string) return string;
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        // --- Update Status Display ---
+        async function updateStatus() {
+            // Prevent updates while dragging seek bar
+            if (isDraggingSeek) return;
+
+            try {
+                const response = await fetch('/status');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const status = await response.json();
+
+                // Update simple status fields
+                document.getElementById('state').textContent = capitalizeFirstLetter(status.state) || '--';
+                document.getElementById('current-playlist').textContent = status.current_playlist || '--';
+                document.getElementById('current-song').textContent = status.current_song || '--';
+                currentSongBasename = status.current_song; // Store for highlighting
+
+                // Update global volume slider
+                const volume = status.volume !== undefined ? Math.round(status.volume) : 50;
+                document.getElementById('volume').textContent = `${volume}%`;
+                if (!volumeSlider.matches(':active')) {
+                    volumeSlider.value = volume;
+                    volumeValueSpan.textContent = `${volume}%`;
+                }
+
+                // Update Seek Slider
+                const position = status.current_position_sec || 0;
+                const duration = status.song_duration_sec || 0;
+                totalTimeSpan.textContent = formatTime(duration);
+                if (!isDraggingSeek) {
+                    seekSlider.value = position;
+                    currentTimeSpan.textContent = formatTime(position);
+                }
+                if (duration > 0 && (status.state === 'playing' || status.state === 'paused')) {
+                    seekSlider.max = duration;
+                    seekSlider.disabled = false;
+                } else {
+                    seekSlider.max = 1;
+                    seekSlider.value = 0;
+                    seekSlider.disabled = true;
+                    currentTimeSpan.textContent = formatTime(0);
+                }
+
+                // --- Update Debug Information ---
+                const debugOutput = document.getElementById('debug-output');
+                if (debugOutput) {
+                    debugOutput.textContent = JSON.stringify(status, null, 2); // Pretty print the status object
+                } 
+                // --- Update Playlist UI ---
+                const newPlaylistOrder = status.playlists || [];
+                const newPlaylistDetails = status.playlist_details || {};
+                const currentPlaylistName = status.current_playlist;
+
+                // Store full paths from details if available
+                currentPlaylistSongsFullPaths = {};
+                for (const plName in newPlaylistDetails) {
+                    if (newPlaylistDetails[plName]?.song_order) {
+                        currentPlaylistSongsFullPaths[plName] = newPlaylistDetails[plName].song_order;
+                    }
+                }
+
+                // Check if playlist structure needs updating
+                const currentDisplayedPlaylists = Array.from(playlistListUl.children).map(li => li.dataset.playlist);
+                if (JSON.stringify(newPlaylistOrder) !== JSON.stringify(currentDisplayedPlaylists) ||
+                    playlistData.current_playlist !== currentPlaylistName) {
+                    console.log("Playlist structure changed or active playlist updated. Rebuilding UI.");
+                    rebuildPlaylistUI(newPlaylistOrder, newPlaylistDetails, currentPlaylistName, status.current_playlist_songs || []);
+                } else {
+                    updatePlaylistDetails(newPlaylistDetails, currentPlaylistName, status.current_playlist_songs || []);
+                }
+
+                // Store current state for next comparison
+                playlistData.playlists = newPlaylistOrder;
+                playlistData.playlist_details = newPlaylistDetails;
+                playlistData.current_playlist = currentPlaylistName;
+
+            } catch (error) {
+                console.error('Error fetching status:', error);
+                displayMessage(`Error fetching status: ${error.message}`, true);
+            } finally {
+                isDraggingSeek = false;
+            }
+        }
+
+        // --- Rebuild Entire Playlist UI ---
+        function rebuildPlaylistUI(playlists, details, currentPlaylistName, currentPlaylistSongBasenames) {
+            playlistListUl.innerHTML = ''; // Clear existing list
+
+            playlists.forEach(playlistName => {
+                const detail = details[playlistName] || { default_volume: null, song_order: [] };
+                const isCurrent = playlistName === currentPlaylistName;
+
+                const li = document.createElement('li');
+                li.className = 'playlist-item';
+                li.dataset.playlist = playlistName; // Store playlist name
+                if (isCurrent) {
+                    li.classList.add('active'); // Mark active playlist
+                }
+
+                // Header
+                const header = document.createElement('div');
+                header.className = 'playlist-header';
+                header.draggable = true; // Make header draggable for playlist reordering
+
+                const headerLeft = document.createElement('div');
+                headerLeft.className = 'playlist-header-left';
+                headerLeft.innerHTML = `<span class="drag-handle">&#x2630;</span><span class="playlist-title">${playlistName}</span><span class="edit-icon" title="Rename playlist">✎</span>`;
+
+                // Add click handler for the title (expand/collapse)
+                const titleSpan = headerLeft.querySelector('.playlist-title');
+                titleSpan.addEventListener('click', () => toggleSongList(li));
+
+                // Add click handler for the edit icon
+                const editIcon = headerLeft.querySelector('.edit-icon');
+                editIcon.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent triggering the parent's click handler
+                    startRenamePlaylist(playlistName, titleSpan);
+                })
+
+                const controls = document.createElement('div');
+                controls.className = 'playlist-controls';
+                const defaultVolume = detail.default_volume !== null ? detail.default_volume : '';
+                const autoAdvanceChecked = detail.auto_advance ? 'checked' : ''; // Check if auto_advance is true
+                const loopChecked = detail.loop ? 'checked' : ''; // Check if loop is true
+                const transitionMode = detail.transition_mode || 'fade';
+
+                controls.innerHTML = `
+                    <div class="playlist-control-row">
+                        <label class="playlist-volume-label" for="vol-${playlistName}">Vol:</label>
+                        <input type="number" min="0" max="100" step="1" value="${defaultVolume}" placeholder="--" class="playlist-volume-input" id="vol-${playlistName}" data-playlist="${playlistName}">
+                        <button class="play-button" data-playlist="${playlistName}">Play</button>
+                    </div>
+                    <div class="playlist-control-row">
+                        <label class="playlist-checkbox-label" for="aa-${playlistName}" title="Auto-Advance to next playlist">AA:</label>
+                        <input type="checkbox" class="playlist-auto-advance-checkbox" id="aa-${playlistName}" data-playlist="${playlistName}" ${autoAdvanceChecked}>
+
+                        <label class="playlist-checkbox-label" for="loop-${playlistName}" title="Loop this playlist">Loop:</label>
+                        <input type="checkbox" class="playlist-loop-checkbox" id="loop-${playlistName}" data-playlist="${playlistName}" ${loopChecked}>
+
+                        <label class="playlist-select-label" for="trans-${playlistName}" title="Transition Mode">Trans:</label>
+                        <select class="playlist-transition-select" id="trans-${playlistName}" data-playlist="${playlistName}">
+                            <option value="fade" ${transitionMode === 'fade' ? 'selected' : ''}>Fade</option>
+                            <option value="complete" ${transitionMode === 'complete' ? 'selected' : ''}>Complete</option>
+                            <option value="stop" ${transitionMode === 'stop' ? 'selected' : ''}>Stop</option>
+                        </select>
+                    </div>
+                `;
+
+                header.appendChild(headerLeft);
+                header.appendChild(controls);
+
+                // Song List (initially hidden, populated if active)
+                const songListUl = document.createElement('ul');
+                songListUl.className = 'song-list';
+                if (isCurrent) {
+                    populateSongList(songListUl, currentPlaylistSongBasenames, currentPlaylistName);
+                }
+
+                li.appendChild(header);
+                li.appendChild(songListUl);
+                playlistListUl.appendChild(li);
+
+                // Add event listener for volume change after element is in DOM
+                const volumeInput = li.querySelector('.playlist-volume-input');
+                 volumeInput.addEventListener('change', handleVolumeInputChange);
+                 volumeInput.addEventListener('blur', handleVolumeInputChange); // Also trigger on blur
+
+                // Add event listener for auto-advance change
+                const autoAdvanceCheckbox = li.querySelector('.playlist-auto-advance-checkbox');
+                autoAdvanceCheckbox.addEventListener('change', handleAutoAdvanceChange);
+
+                // Add event listener for loop change
+                const loopCheckbox = li.querySelector('.playlist-loop-checkbox');
+                loopCheckbox.addEventListener('change', handleLoopChange);
+
+                // Add event listener for transition mode change
+                const transitionSelect = li.querySelector('.playlist-transition-select');
+                transitionSelect.addEventListener('change', handleTransitionModeChange);
+
+            });
+        }
+
+        // --- Update Details of Existing Playlist UI ---
+         function updatePlaylistDetails(details, currentPlaylistName, currentPlaylistSongBasenames) {
+            playlistListUl.querySelectorAll('.playlist-item').forEach(li => {
+                const playlistName = li.dataset.playlist;
+                const detail = details[playlistName] || { default_volume: null };
+                const isCurrent = playlistName === currentPlaylistName;
+
+                // Update active class
+                if (isCurrent) {
+                    if (!li.classList.contains('active')) {
+                        li.classList.add('active');
+                    }
+                } else {
+                    if (li.classList.contains('active')) {
+                        li.classList.remove('active');
+                    }
+                }
+
+                // Update volume input value (if not focused)
+                const volumeInput = li.querySelector('.playlist-volume-input');
+                if (volumeInput && document.activeElement !== volumeInput) {
+                     volumeInput.value = detail.default_volume !== null ? detail.default_volume : '';
+                     // Adjust placeholder based on value presence? Maybe not needed.
+                }
+
+                // Update auto-advance checkbox state
+                const autoAdvanceCheckbox = li.querySelector('.playlist-auto-advance-checkbox');
+                if (autoAdvanceCheckbox && document.activeElement !== autoAdvanceCheckbox) { // Avoid changing while user might be clicking
+                    autoAdvanceCheckbox.checked = detail.auto_advance || false;
+                }
+
+                // Update loop checkbox state
+                const loopCheckbox = li.querySelector('.playlist-loop-checkbox');
+                if (loopCheckbox && document.activeElement !== loopCheckbox) {
+                    loopCheckbox.checked = detail.loop || false;
+                }
+
+                // Update transition mode select
+                const transitionSelect = li.querySelector('.playlist-transition-select');
+                if (transitionSelect && document.activeElement !== transitionSelect) {
+                    transitionSelect.value = detail.transition_mode || 'fade';
+                }
+
+                // Update or clear song list
+                const songListUl = li.querySelector('.song-list');
+                if (isCurrent) {
+                    populateSongList(songListUl, currentPlaylistSongBasenames, playlistName); // Repopulate if active
+                } else {
+                    songListUl.innerHTML = ''; // Clear if not active
+                    songListUl.style.display = 'none'; // Ensure hidden
+                }
+            });
+        }
+
+        // --- Populate Song List for a Playlist ---
+        function populateSongList(songListUl, songBasenames, playlistName) {
+             // Check if song list content needs update
+             const currentRenderedSongs = Array.from(songListUl.children).map(item => item.textContent.trim().substring(2)); // Get text, remove handle chars
+             const needsUpdate = JSON.stringify(currentRenderedSongs) !== JSON.stringify(songBasenames);
+
+             if(needsUpdate){
+                 songListUl.innerHTML = ''; // Clear previous songs
+                 const fullPaths = currentPlaylistSongsFullPaths[playlistName] || [];
+                 songBasenames.forEach((basename, index) => {
+                     const songLi = document.createElement('li');
+                     songLi.className = 'song-item';
+                     songLi.draggable = true;
+                     // Use full path from our stored map if available, otherwise just use basename
+                     songLi.dataset.songPath = fullPaths[index] || basename; // Store full path for reordering
+                     songLi.dataset.playlistName = playlistName; // Store parent playlist
+
+                     songLi.innerHTML = `<span class="drag-handle">&#x2630;</span> <span class="song-title">${basename}</span><span class="edit-icon" title="Rename song">✎</span>`;
+                     if (basename === currentSongBasename && playlistName === playlistData.current_playlist) {
+                         songLi.classList.add('playing');
+                     }
+
+                     // Add click handler for the edit icon
+                     const editIcon = songLi.querySelector('.edit-icon');
+                     const titleSpan = songLi.querySelector('.song-title');
+                     editIcon.addEventListener('click', (e) => {
+                         e.stopPropagation(); // Prevent triggering other handlers
+                         startRenameSong(playlistName, basename, titleSpan, songLi.dataset.songPath);
+                     })
+                     songListUl.appendChild(songLi);
+                 });
+             } else {
+                 // Song list is the same, just update highlighting
+                  songListUl.querySelectorAll('.song-item').forEach(songLi => {
+                     const basename = songLi.textContent.trim().substring(2);
+                      if (basename === currentSongBasename && playlistName === playlistData.current_playlist) {
+                         if (!songLi.classList.contains('playing')) songLi.classList.add('playing');
+                     } else {
+                          if (songLi.classList.contains('playing')) songLi.classList.remove('playing');
+                     }
+                 });
+             }
+
+
+             songListUl.style.display = 'block'; // Ensure visible
+        }
+
+
+        // --- Toggle Song List Visibility ---
+        function toggleSongList(playlistLiElement) {
+            const songList = playlistLiElement.querySelector('.song-list');
+            const isActive = playlistLiElement.classList.contains('active');
+
+            // Only allow expanding the currently active playlist visually
+            // Or, if we want to allow exploring others:
+            if (songList) {
+                 if (songList.style.display === 'block') {
+                      songList.style.display = 'none';
+                 } else {
+                      // If expanding, maybe collapse others? For now, allow multiple expands.
+                      // If this playlist is the *active* one, populate its songs first
+                      if (isActive) {
+                          const playlistName = playlistLiElement.dataset.playlist;
+                           // Fetch status again to ensure song list is up-to-date? Or rely on existing data?
+                           // Let's try using existing data first.
+                           const songBasenames = playlistData.current_playlist === playlistName
+                               ? (currentPlaylistSongsFullPaths[playlistName] || []).map(p => p.split('/').pop())
+                               : []; // Show empty if not the truly active one? Or fetch on demand? Needs thought.
+                           // For now, assume updateStatus keeps `currentPlaylistSongsFullPaths` accurate for the active list
+                           populateSongList(songList, songBasenames, playlistName);
+                      } else {
+                           // Optionally load/display songs for non-active playlists here
+                           // Could make an API call like /get_songs?playlist=...
+                           // For now, just toggle visibility, it might be empty if not active.
+                          songList.style.display = 'block';
+                           songList.innerHTML = '<li>(Expand active playlist to see/reorder songs)</li>'; // Placeholder
+                      }
+
+                 }
+            }
+        }
+
+         // --- Handle Volume Input Change ---
+        function handleVolumeInputChange(event) {
+            const input = event.target;
+            const playlistName = input.dataset.playlist;
+            let volume = input.value === '' ? null : parseInt(input.value, 10); // Treat empty as 'unset' (null)
+
+            // Clamp value
+            if (volume !== null) {
+                if (isNaN(volume) || volume < 0) volume = 0;
+                if (volume > 100) volume = 100;
+                input.value = volume; // Update input field with clamped value
+            } else {
+                 input.value = ''; // Ensure empty if null
+            }
+
+
+            console.log(`Volume changed for ${playlistName}: ${volume === null ? 'unset' : volume}`);
+            sendCommand('/set_playlist_volume', 'POST', { playlist_name: playlistName, volume: volume });
+        }
+
+        // --- Handle Auto Advance Checkbox Change ---
+        function handleAutoAdvanceChange(event) {
+            const checkbox = event.target;
+            const playlistName = checkbox.dataset.playlist;
+            const isEnabled = checkbox.checked;
+
+            console.log(`Auto-advance changed for ${playlistName}: ${isEnabled}`);
+            sendCommand('/set_playlist_auto_advance', 'POST', { playlist_name: playlistName, enabled: isEnabled });
+        }
+
+        // --- Handle Loop Checkbox Change ---
+        function handleLoopChange(event) {
+            const checkbox = event.target;
+            const playlistName = checkbox.dataset.playlist;
+            const isEnabled = checkbox.checked;
+
+            console.log(`Loop changed for ${playlistName}: ${isEnabled}`);
+            sendCommand('/set_playlist_loop', 'POST', { playlist_name: playlistName, enabled: isEnabled });
+        }
+
+        // --- Handle Transition Mode Change ---
+        function handleTransitionModeChange(event) {
+            const select = event.target;
+            const playlistName = select.dataset.playlist;
+            const mode = select.value;
+
+            console.log(`Transition mode changed for ${playlistName}: ${mode}`);
+            sendCommand('/set_playlist_transition_mode', 'POST', { playlist_name: playlistName, mode: mode });
+        }
+
+        // --- Display Messages ---
+        function displayMessage(msg, isError = false) {
+            messageDiv.textContent = msg;
+            messageDiv.style.display = 'block';
+            messageDiv.id = isError ? 'error-message' : 'message'; // Basic styling difference
+            // Hide message after a few seconds
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('pause-button').addEventListener('click', () => sendCommand('/pause'));
+        document.getElementById('stop-button').addEventListener('click', () => sendCommand('/stop'));
+        document.getElementById('next-button').addEventListener('click', () => sendCommand('/next'));
+        document.getElementById('next-playlist-button').addEventListener('click', () => sendCommand('/next_playlist', 'POST'));
+
+        // Volume Slider Listener
+        volumeSlider.addEventListener('input', (event) => {
+            const volume = Math.round(parseFloat(event.target.value));
+            volumeValueSpan.textContent = `${volume}%`;
+            // Send command, maybe debounce this if it sends too many requests
+            sendCommand('/volume', 'POST', { volume: volume });
+        });
+
+        // Seek Slider Listeners
+        seekSlider.addEventListener('input', (event) => {
+            // Update time display immediately while dragging
+            currentTimeSpan.textContent = formatTime(event.target.value);
+            isDraggingSeek = true; // Set flag while dragging
+            console.log("Seek drag start/move");
+        });
+
+        seekSlider.addEventListener('change', (event) => {
+            // Send command when user releases the slider
+            const seekTime = event.target.value;
+            console.log(`User seeked to: ${seekTime}. Sending command.`);
+            sendCommand('/seek', 'POST', { position: parseFloat(seekTime) })
+                .finally(() => {
+                     // Intentionally delay resetting the flag slightly after sending command
+                     // to give the next status update a chance to reflect the seek command's effect
+                     // rather than the intermediate drag position.
+                     // But also ensure it gets reset even if command fails.
+                    // setTimeout(() => {
+                    //     isDraggingSeek = false;
+                    //      console.log("Seek drag end: flag reset (delayed)");
+                    // }, 250); // Small delay - adjust if needed
+                    // Let updateStatus handle resetting the flag now
+                });
+             // Keep isDraggingSeek = true until updateStatus resets it
+             console.log("Seek drag end: flag remains true until next status update");
+        });
+
+        // Use event delegation for play buttons, volume inputs etc.
+        playlistListUl.addEventListener('click', (event) => {
+            // Play button
+            if (event.target.classList.contains('play-button')) {
+                const playlistName = event.target.dataset.playlist;
+                sendCommand('/play', 'POST', { playlist: playlistName });
+                // Expand the clicked playlist visually
+                const li = event.target.closest('.playlist-item');
+                if(li && !li.classList.contains('active')) {
+                    // Maybe force-expand? Let updateStatus handle it based on backend state.
+                }
+            }
+            // Could handle other clicks within the list here if needed
+        });
+
+        // --- Drag and Drop Logic (Combined for Playlists and Songs) ---
+        let dragType = null; // 'playlist' or 'song'
+        let sourcePlaylistName = null; // For song dragging
+
+        playlistListUl.addEventListener('dragstart', (e) => {
+            draggedElement = e.target; // The element being dragged (playlist-header or song-item)
+
+            if (draggedElement.classList.contains('playlist-header')) {
+                dragType = 'playlist';
+                // Add visual feedback to the whole playlist item
+                setTimeout(() => draggedElement.closest('.playlist-item').style.opacity = '0.5', 0);
+                console.log('Dragging playlist:', draggedElement.closest('.playlist-item').dataset.playlist);
+            } else if (draggedElement.classList.contains('song-item')) {
+                dragType = 'song';
+                sourcePlaylistName = draggedElement.dataset.playlistName;
+                // Add visual feedback to the song item
+                setTimeout(() => draggedElement.classList.add('dragging'), 0);
+                 console.log('Dragging song:', draggedElement.dataset.songPath, 'from', sourcePlaylistName);
+            } else {
+                 e.preventDefault(); // Don't allow dragging other things
+                 draggedElement = null;
+                 dragType = null;
+            }
+        });
+
+        playlistListUl.addEventListener('dragend', (e) => {
+            if (!draggedElement) return;
+
+             // Restore appearance
+             if (dragType === 'playlist') {
+                 draggedElement.closest('.playlist-item').style.opacity = '';
+             } else if (dragType === 'song') {
+                 draggedElement.classList.remove('dragging');
+             }
+
+             // --- Get the new order and send update ---
+            if (dragType === 'playlist') {
+                const newPlaylistOrder = Array.from(playlistListUl.querySelectorAll('.playlist-item'))
+                                       .map(item => item.dataset.playlist);
+                console.log('Playlist drag ended. New order:', newPlaylistOrder);
+                sendCommand('/reorder', 'POST', { order: newPlaylistOrder });
+            } else if (dragType === 'song') {
+                 // Find the song list UL the song ended up in
+                const targetSongListUl = draggedElement.closest('.song-list');
+                if (targetSongListUl && sourcePlaylistName) { // Must end in a song list
+                     const targetPlaylistName = targetSongListUl.closest('.playlist-item').dataset.playlist;
+                     // For now, only allow reordering *within* the same playlist
+                     if (targetPlaylistName === sourcePlaylistName) {
+                          const newSongOrderPaths = Array.from(targetSongListUl.querySelectorAll('.song-item'))
+                                                      .map(item => item.dataset.songPath); // Use stored full path
+                          console.log(`Song drag ended in playlist ${targetPlaylistName}. New song order:`, newSongOrderPaths);
+                          sendCommand('/reorder_songs', 'POST', {
+                              playlist_name: targetPlaylistName,
+                              new_song_order: newSongOrderPaths
+                          });
+                     } else {
+                         console.warn("Song dropped into a different playlist. Reverting/Ignoring.");
+                          // Revert UI change? Easiest is to let the next status update fix it.
+                          displayMessage("Cannot move songs between playlists yet.", true);
+                     }
+
+                } else {
+                     console.warn("Song drag ended outside a valid song list. Ignoring.");
+                      // Let status update fix UI
+                }
+            }
+
+
+            // Clean up
+            draggedElement = null;
+            dragType = null;
+            sourcePlaylistName = null;
+        });
+
+        playlistListUl.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Necessary to allow dropping
+            if (!draggedElement) return;
+
+            if (dragType === 'playlist') {
+                const afterElement = getDragAfterElement(playlistListUl, e.clientY, '.playlist-item');
+                 const playlistItem = draggedElement.closest('.playlist-item'); // The whole item being dragged
+                 if (playlistItem) {
+                    if (afterElement == null) {
+                        playlistListUl.appendChild(playlistItem);
+                    } else {
+                        playlistListUl.insertBefore(playlistItem, afterElement);
+                    }
+                 }
+            } else if (dragType === 'song') {
+                // Find the song list UL we are hovering over
+                const targetSongListUl = e.target.closest('.song-list');
+                // Only allow dropping within the *original* playlist's song list
+                 if (targetSongListUl && targetSongListUl.closest('.playlist-item').dataset.playlist === sourcePlaylistName) {
+                      const afterElement = getDragAfterElement(targetSongListUl, e.clientY, '.song-item');
+                      if (afterElement == null) {
+                          targetSongListUl.appendChild(draggedElement);
+                      } else {
+                           targetSongListUl.insertBefore(draggedElement, afterElement);
+                      }
+                 } else {
+                      // Optional: Visual cue that drop is not allowed here (e.g., change cursor)
+                 }
+            }
+        });
+
+        // Refactored to handle different selectors
+        function getDragAfterElement(container, y, selector) {
+            const draggableElements = [...container.querySelectorAll(`${selector}:not(.dragging)`)]; // Exclude the item being dragged
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                // Finds the element just below the cursor
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // --- Rename Functions ---
+        function startRenamePlaylist(playlistName, titleElement) {
+            // Create an input field to replace the title
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = playlistName;
+            input.className = 'rename-input';
+            input.style.width = (playlistName.length * 10) + 'px'; // Approximate width
+            input.style.minWidth = '100px';
+
+            // Replace the title with the input
+            const originalContent = titleElement.innerHTML;
+            titleElement.innerHTML = '';
+            titleElement.appendChild(input);
+
+            // Focus the input and select all text
+            input.focus();
+            input.select();
+
+            // Handle Enter key and blur (clicking outside)
+            function handleRename() {
+                const newName = input.value.trim();
+                if (newName && newName !== playlistName) {
+                    // Send rename request to server
+                    sendCommand('/rename_playlist', 'POST', {
+                        old_name: playlistName,
+                        new_name: newName
+                    }).then(response => {
+                        // Update will happen via status refresh
+                        console.log(`Playlist renamed from ${playlistName} to ${newName}`);
+                    }).catch(error => {
+                        // Restore original name on error
+                        titleElement.innerHTML = originalContent;
+                        console.error('Error renaming playlist:', error);
+                    });
+                } else {
+                    // Restore original name if unchanged or empty
+                    titleElement.innerHTML = originalContent;
+                }
+            }
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleRename();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    titleElement.innerHTML = originalContent; // Cancel edit
+                }
+            });
+
+            input.addEventListener('blur', handleRename);
+        }
+
+        function startRenameSong(playlistName, songBasename, titleElement, fullPath) {
+            // Create an input field to replace the title
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = songBasename;
+            input.className = 'rename-input';
+            input.style.width = (songBasename.length * 8) + 'px'; // Approximate width
+            input.style.minWidth = '100px';
+
+            // Replace the title with the input
+            const originalContent = titleElement.innerHTML;
+            titleElement.innerHTML = '';
+            titleElement.appendChild(input);
+
+            // Focus the input and select all text
+            input.focus();
+            input.select();
+
+            // Handle Enter key and blur (clicking outside)
+            function handleRename() {
+                const newName = input.value.trim();
+                if (newName && newName !== songBasename) {
+                    // Send rename request to server
+                    sendCommand('/rename_song', 'POST', {
+                        playlist_name: playlistName,
+                        old_name: fullPath || songBasename, // Use full path if available
+                        new_name: newName
+                    }).then(response => {
+                        // Update will happen via status refresh
+                        console.log(`Song renamed from ${songBasename} to ${newName}`);
+                    }).catch(error => {
+                        // Restore original name on error
+                        titleElement.innerHTML = originalContent;
+                        console.error('Error renaming song:', error);
+                    });
+                } else {
+                    // Restore original name if unchanged or empty
+                    titleElement.innerHTML = originalContent;
+                }
+            }
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleRename();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    titleElement.innerHTML = originalContent; // Cancel edit
+                }
+            });
+
+            input.addEventListener('blur', handleRename);
+        }
+
+        // --- Initial Status Update & Interval ---
+        updateStatus().then(() => {
+            console.log("Initial status loaded.");
+            // Set interval only after initial load succeeds
+            setInterval(updateStatus, 1000); // Update status periodically
+        }).catch(err => {
+            console.error("Failed initial status load:", err);
+             displayMessage("Failed to load initial status from server.", true);
+        });
+
+    </script>
+
+</body>
+</html>

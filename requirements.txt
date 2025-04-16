@@ -1,0 +1,4 @@
+Flask>=2.0
+# Add python-mpd2 if you plan to use MPD
+# python-mpd2
+pygame>=2.0 
