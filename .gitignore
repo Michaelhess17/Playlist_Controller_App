@@ -2,3 +2,17 @@
 # pixi environments
 .pixi
 *.egg-info
+*.bak
+*.bkp
+
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.exe
+*.whl
+*.egg
+*.dist-info
+*.lock
+*.json
