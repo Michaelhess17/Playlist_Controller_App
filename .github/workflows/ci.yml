@@ -1,0 +1,42 @@
+name: Python CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Pixi
+      uses: prefix-dev/setup-pixi@v0.8.8
+      with:
+        pixi-version: v0.44.0
+        cache: true
+    # Assuming you have a [tasks.lint] section in pixi.toml that runs flake8
+    - name: Lint
+      run: pixi run lint
+
+  test:
+    runs-on: ubuntu-latest
+    # No 'needs: lint' for now, as the lint step depends on pixi setup
+    # We could combine them into one job or duplicate pixi setup if needed.
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg # For ffprobe
+    - name: Set up Pixi
+      uses: prefix-dev/setup-pixi@v0.8.8
+      with:
+        pixi-version: v0.44.0
+        cache: true
+    - name: Test with Pixi
+      env:
+        SDL_AUDIODRIVER: dummy # Prevent pygame audio errors in CI
+        SDL_VIDEODRIVER: dummy # Prevent pygame video errors in CI
+      run: pixi run test 

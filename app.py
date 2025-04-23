@@ -6,6 +6,7 @@ import json # Added for persistent data
 import time # Added for potential future fade-in timing
 import logging
 import subprocess # Add subprocess import
+import re
 
 logging.basicConfig(level=logging.WARNING)  # Set to WARNING to suppress debug/info messages
 
@@ -174,7 +175,8 @@ def get_song_duration(filename):
         popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = popen.communicate()
         if popen.returncode == 0 and stdout:
-             return float(stdout.strip())
+             match = re.search(r'duration=([0-9.]+)', stdout.decode('utf-8'))
+             return float(match.group(1)) if match else 0
         else:
             # Log ffprobe errors if any
             error_output = stderr.decode('utf-8').strip()
