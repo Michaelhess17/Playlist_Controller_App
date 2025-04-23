@@ -16,3 +16,4 @@
 *.dist-info
 *.lock
 *.json
+*tmp*
