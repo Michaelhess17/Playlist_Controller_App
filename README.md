@@ -7,6 +7,8 @@ A simple Flask-based web interface to control music playback for a wedding.
 [![Python CI](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ci.yml/badge.svg)](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ci.yml)
 [![Ruff](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ruff.yml/badge.svg)](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ruff.yml)
 
+![A screenshot of the website](assets/screenshot.png)
+
 ## Features
 
 *   List playlists (folders) from a specified music directory.
