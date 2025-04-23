@@ -1,36 +1,42 @@
 import pytest
 import os
-import json
 import sys
 from unittest.mock import patch, MagicMock
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# Import the Flask app instance and functions to test
-from app import app as flask_app, get_playlists, calculate_playlist_runtime, _get_ordered_songs_for_playlist, save_persistent_data, get_song_duration
+try:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # Import the Flask app instance and functions to test
+    from app import (
+        app as flask_app, get_playlists, calculate_playlist_runtime,
+        _get_ordered_songs_for_playlist, get_song_duration)
+except IndexError:
+    pass
 
 # --- Fixtures ---
+
 
 @pytest.fixture
 def app():
     """Create and configure a new app instance for each test."""
-    # You might need to configure the app for testing, e.g., setting TESTING = True
+    # Configure app for testing
     flask_app.config.update({
         "TESTING": True,
-        # Add other test configurations if necessary
     })
     # TODO: Consider setting MUSIC_DIR to a temporary test directory
     # TODO: Consider mocking pygame.init() and other setup if needed
     yield flask_app
+
 
 @pytest.fixture
 def client(app):
     """A test client for the app."""
     return app.test_client()
 
+
 @pytest.fixture
 def runner(app):
     """A test runner for the app's Click commands (if any)."""
     return app.test_cli_runner()
+
 
 @pytest.fixture(autouse=True)
 def mock_pygame(mocker):
@@ -45,6 +51,7 @@ def mock_pygame(mocker):
     # ... etc.
     return mock_mixer
 
+
 @pytest.fixture
 def mock_save_data(mocker):
     """Fixture to mock the save_persistent_data function."""
@@ -52,12 +59,14 @@ def mock_save_data(mocker):
 
 # --- Test Functions ---
 
+
 # Test Basic Route
 def test_index_route(client):
     """Test the main index route returns successfully."""
     response = client.get('/')
     assert response.status_code == 200
     assert b"<h1>Music Controller</h1>" in response.data
+
 
 # Test get_playlists (using pyfakefs for filesystem mocking)
 def test_get_playlists(fs, mock_save_data):
@@ -72,7 +81,8 @@ def test_get_playlists(fs, mock_save_data):
     # Patch the MUSIC_DIR constant within the app module for this test
     with patch('app.MUSIC_DIR', fake_music_dir):
         # Reset persistent_data for a clean test
-        with patch('app.persistent_data', {"playlist_order": [], "playlist_details": {}}):
+        clean_data = {"playlist_order": [], "playlist_details": {}}
+        with patch('app.persistent_data', clean_data):
             playlists = get_playlists()
             # Should be sorted alphabetically initially
             assert playlists == ["Playlist A", "Playlist B", "Playlist C"]
@@ -83,12 +93,13 @@ def test_get_playlists(fs, mock_save_data):
                 "playlist_details": {
                     "Playlist C": {"song_order": []},
                     "Playlist A": {"song_order": []}
-                 }
+                }
             }
             with patch('app.persistent_data', pre_ordered_data):
-                 # Playlist B is new, should be appended
-                 playlists_reordered = get_playlists()
-                 assert playlists_reordered == ["Playlist C", "Playlist A", "Playlist B"]
+                # Playlist B is new, should be appended
+                playlists_reordered = get_playlists()
+                assert playlists_reordered == ["Playlist C", "Playlist A", "Playlist B"]
+
 
 # Test _get_ordered_songs_for_playlist (using pyfakefs)
 def test_get_ordered_songs_for_playlist(fs, mock_save_data):
@@ -110,20 +121,30 @@ def test_get_ordered_songs_for_playlist(fs, mock_save_data):
         # Test initial discovery (alphabetical)
         initial_data = {
             "playlist_order": [playlist_name],
-            "playlist_details": {playlist_name: {"song_order": [], "default_volume": None, "auto_advance": False}}
+            "playlist_details": {
+                playlist_name: {"song_order": [],
+                                "default_volume": None,
+                                "auto_advance": False}
+            }
         }
         with patch('app.persistent_data', initial_data):
-             songs = _get_ordered_songs_for_playlist(playlist_name)
-             assert songs == [song1_path, song2_path, song3_path] # Sorted alphabetically
+            songs = _get_ordered_songs_for_playlist(playlist_name)
+            assert songs == [song1_path, song2_path, song3_path]  # Sorted alphabetically
 
         # Test with pre-ordered songs
         ordered_data = {
-             "playlist_order": [playlist_name],
-            "playlist_details": {playlist_name: {"song_order": [song3_path, song1_path], "default_volume": None, "auto_advance": False}}
+            "playlist_order": [playlist_name],
+            "playlist_details": {
+                playlist_name: {
+                    "song_order": [song3_path, song1_path],
+                    "default_volume": None,
+                    "auto_advance": False
+                }
+            }
         }
         with patch('app.persistent_data', ordered_data):
             songs_reordered = _get_ordered_songs_for_playlist(playlist_name)
-            # song2 is new, should be appended alphabetically after existing order
+            # song2 is new, should be added alphabetically after existing order
             assert songs_reordered == [song3_path, song1_path, song2_path]
 
 
@@ -138,9 +159,10 @@ def test_calculate_playlist_runtime(mocker):
     # Mock app.get_song_duration to return specific values
     mock_get_duration = mocker.patch('app.get_song_duration')
     # Define return values for each call
-    mock_get_duration.side_effect = [120.0, 180.5, 60.0] # Durations in seconds
+    mock_get_duration.side_effect = [120.0, 180.5, 60.0]  # Durations (s)
 
-    expected_runtime_min = round((120.0 + 180.5 + 60.0) / 60, 1)
+    expected_runtime_sec = 120.0 + 180.5 + 60.0
+    expected_runtime_min = round(expected_runtime_sec / 60, 1)
     runtime = calculate_playlist_runtime(playlist_name, playlist_details)
 
     assert runtime == expected_runtime_min
@@ -149,6 +171,7 @@ def test_calculate_playlist_runtime(mocker):
     mock_get_duration.assert_any_call("/path/song1.mp3")
     mock_get_duration.assert_any_call("/path/song2.mp3")
     mock_get_duration.assert_any_call("/path/song3.mp3")
+
 
 # Test get_song_duration (mocking subprocess.Popen)
 def test_get_song_duration_success(mocker, fs):
@@ -162,7 +185,7 @@ def test_get_song_duration_success(mocker, fs):
     ffprobe_output = b'[FORMAT]\nduration=123.4560000\n[/FORMAT]\n'
     mock_popen.communicate.return_value = (ffprobe_output, b'')
 
-    mocker.patch('os.path.isfile', return_value=True) # Ensure file check passes
+    mocker.patch('os.path.isfile', return_value=True)  # Ensure file check passes
     mock_subprocess_popen = mocker.patch('subprocess.Popen', return_value=mock_popen)
 
     print(fake_song)
@@ -171,6 +194,7 @@ def test_get_song_duration_success(mocker, fs):
     assert duration == 123.456
     mock_subprocess_popen.assert_called_once()
     # Can add more specific checks on the args passed to Popen if needed
+
 
 def test_get_song_duration_ffprobe_fail_pygame_fallback(mocker, fs):
     """Test ffprobe failing and falling back to pygame duration."""
@@ -186,7 +210,7 @@ def test_get_song_duration_ffprobe_fail_pygame_fallback(mocker, fs):
     # Mock pygame.mixer.Sound
     mock_sound = MagicMock()
     mock_sound.get_length.return_value = 60.5
-    mock_mixer = mocker.patch('pygame.mixer') # Mock the module
+    mock_mixer = mocker.patch('pygame.mixer')  # Mock the module
     mock_mixer.Sound.return_value = mock_sound
 
     mocker.patch('os.path.isfile', return_value=True)
@@ -207,6 +231,7 @@ def test_get_song_duration_ffprobe_fail_pygame_fallback(mocker, fs):
 # TODO: Test reorder/set_* routes - Mock persistent_data, save_persistent_data, potentially current playback state updates
 # TODO: Test rename routes - Mock os.rename, persistent_data, save_persistent_data, current playback state
 
+
 # Example of how to test an endpoint needing state:
 def test_stop_endpoint(client, mock_pygame):
     """Test the /stop endpoint."""
@@ -220,4 +245,4 @@ def test_stop_endpoint(client, mock_pygame):
 
     # Assert that the stop function was called on the mock
     mock_pygame.music.stop.assert_called_once()
-    mock_pygame.music.unload.assert_called_once() 
+    mock_pygame.music.unload.assert_called_once()

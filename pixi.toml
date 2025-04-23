@@ -6,19 +6,19 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 [tasks]
-lint = "flake8 ."
+lint = "ruff check app.py tests/"
 test = "pytest -v tests/"
 start = "python app.py"
 
 [dependencies]
 python = ">=3.12.3,<3.13"
 ffmpeg = ">=7"
+ruff = ">=0.11.6,<0.12"
 
 [pypi-dependencies]
 pip = ">=25.0.1, <26"
 pygame = ">=2.6.1, <3"
 flask = ">=3.1.0, <4"
 pytest = ">=8.3.2, <9"
-flake8 = ">=7.1.0, <8"
 pyfakefs = ">=5.5.0, <6"
 pytest-mock = ">=3.11.1, <4"
