@@ -12,11 +12,12 @@
         fhs = pkgs.buildFHSEnv {
           name = "pixi-env";
 
-          targetPkgs = _: [ pkgs.pixi ];
+          targetPkgs = _: with pkgs; [ pixi glib alsa-lib alsa-utils ];
         };
       in
       {
         devShell = fhs.env;
       }
     );
+    
 }
