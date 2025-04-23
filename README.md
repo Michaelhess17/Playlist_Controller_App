@@ -5,6 +5,7 @@ A simple Flask-based web interface to control music playback for a wedding.
 ## Status
 
 [![Python CI](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ci.yml/badge.svg)](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ci.yml)
+[![Ruff](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/pylint.yml/badge.svg)](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/pylint.yml)
 
 ## Features
 
@@ -14,9 +15,12 @@ A simple Flask-based web interface to control music playback for a wedding.
 *   View current playback status.
 *   Reorder playlists and songs within playlists (drag and drop).
 *   Set default volume per playlist.
-*   Set auto-advance to next playlist.
+*   Set whether to auto-advance to next playlist.
 *   Set loop per playlist.
-*   Set transition mode (fade, complete, stop) between playlists.
+*   Set transition mode between playlists.
+    * Stop mode sets the music to stop once the playlist is over or the "Next Playlist" button is pressed
+    * Complete mode sets the music to move to advance to the next playlist after the current song completes
+    * Fade mode fades out the current song immediately and moves to the next playlist if the "Next Playlist" button is pressed
 *   Seek within the current track.
 *   Rename playlists and songs.
 *   Display playlist runtimes.
@@ -25,8 +29,8 @@ A simple Flask-based web interface to control music playback for a wedding.
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-    cd YOUR_REPOSITORY
+    git clone https://github.com/Michaelhess17/Playlist_Controller_App.git
+    cd Playlist_Controller_App
     ```
 2.  **Install dependencies:**
     *   Ensure you have Python 3 installed.
@@ -39,11 +43,11 @@ A simple Flask-based web interface to control music playback for a wedding.
         ```bash
         nix develop
         ```
-        (You might still need to run `pixi install` inside the Nix shell if `flake.nix` doesn't manage Python packages directly via Pixi).
+        (You will then need to run `pixi install` inside the Nix shell).
 3.  **Configure:**
     *   Edit `app.py` and set the `MUSIC_DIR` variable to your actual music directory.
 4.  **Run the application:**
-    *   If using Pixi: `pixi run start` (assuming a `start` task in `pixi.toml` runs `python app.py`)
+    *   If using Pixi: `pixi run start`
     *   If using Nix/manual Python: `python app.py`
 5.  Access the controller in your web browser, typically at `http://localhost:5522` or `http://<your-server-ip>:5522`.
 
