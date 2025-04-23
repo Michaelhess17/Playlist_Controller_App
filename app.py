@@ -549,7 +549,7 @@ def get_status():
             'current_playlist': None,
             'current_song': None,
             'volume': 0,
-            'playlists': get_playlists(),
+            # 'playlists': get_playlists(),
             'playlists': all_playlists, # Use list calculated earlier
             'error_message': str(e),
             'playlist_details': all_playlist_details,
@@ -760,7 +760,7 @@ def reorder_playlists():
     if not all(pl_name in current_playlists for pl_name in new_order):
          # This check might be too strict if get_playlists() hasn't caught up yet?
          # Or could compare against os.listdir directly? For now, compare against get_playlists result.
-         print(f"Warning: New order contains unknown or duplicate playlist names. Ignoring.")
+         print("Warning: New order contains unknown or duplicate playlist names. Ignoring.")
          # Maybe just filter the new_order?
          valid_new_order = [pl for pl in new_order if pl in current_playlists]
          if len(valid_new_order) != len(set(valid_new_order)):
@@ -1123,7 +1123,7 @@ def seek_music():
             # Save current volume
             try:
                 current_volume = pygame.mixer.music.get_volume()
-            except:
+            except pygame.error:
                 current_volume = 1.0
             
             # IMPORTANT: Complete reinitialization sequence to fix event handling
@@ -1169,7 +1169,7 @@ def seek_music():
         except Exception as recovery_e:
             print(f"Complete recovery failed: {recovery_e}")
             stop_music_internal()
-            return jsonify({'status': 'error', 'message': f'Seeking and recovery failed. Playback stopped.'}), 500
+            return jsonify({'status': 'error', 'message': 'Seeking and recovery failed. Playback stopped.'}), 500
 
 @app.route('/rename_playlist', methods=['POST'])
 def rename_playlist():
