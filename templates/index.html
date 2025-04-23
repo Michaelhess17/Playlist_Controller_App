@@ -80,6 +80,10 @@
         #next-button { background-color: var(--beige); color: var(--white); /* Beige needs white text */ }
         #next-button:hover { background-color: #9a6f5f; }
 
+        /* Next Playlist Button */
+        #next-playlist-button { background-color: var(--sage-green); color: var(--white); }
+        #next-playlist-button:hover { background-color: #6f7055; }
+
         .controls div { margin-top: 15px; }
 
         /* --- Playlist Styling --- */
@@ -631,7 +635,15 @@
 
                 const headerLeft = document.createElement('div');
                 headerLeft.className = 'playlist-header-left';
-                headerLeft.innerHTML = `<span class="drag-handle">&#x2630;</span><span class="playlist-title">${playlistName}</span><span class="edit-icon" title="Rename playlist">✎</span>`;
+
+                // Add runtime if available
+                let runtimeText = '';
+                const runtimeMinutes = detail.runtime_minutes;
+                if (runtimeMinutes !== undefined && runtimeMinutes > 0) {
+                    runtimeText = `<span class="playlist-runtime" style="font-weight: normal; font-size: 0.85em; color: #666; margin-left: 8px;">(${runtimeMinutes} min)</span>`;
+                }
+
+                headerLeft.innerHTML = `<span class="drag-handle">&#x2630;</span><span class="playlist-title">${playlistName}</span>${runtimeText}<span class="edit-icon" title="Rename playlist">✎</span>`;
 
                 // Add click handler for the title (expand/collapse)
                 const titleSpan = headerLeft.querySelector('.playlist-title');

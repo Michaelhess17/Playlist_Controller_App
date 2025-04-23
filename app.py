@@ -5,6 +5,7 @@ import glob # Added glob
 import json # Added for persistent data
 import time # Added for potential future fade-in timing
 import logging
+import subprocess # Add subprocess import
 
 logging.basicConfig(level=logging.WARNING)  # Set to WARNING to suppress debug/info messages
 
@@ -94,6 +95,7 @@ seek_request_while_paused = None
 transition_after_current_song = None
 pending_fade_playlist = None
 stop_after_current_song = False  # Initialize the flag here
+playlist_runtimes = {} # Store calculated runtimes {playlist_name: runtime_minutes}
 # ---------------------------
 
 # Add this global variable at the top with your other globals:
@@ -158,6 +160,78 @@ def get_playlists():
     persistent_data["playlist_details"] = updated_details
 
     return final_playlist_list
+
+# --- Runtime Calculation Helpers ---
+def get_song_duration(filename):
+    """Gets the duration of a song file using ffprobe."""
+    # Ensure the file exists before probing
+    if not os.path.isfile(filename):
+        print(f"Warning: Cannot get duration. File not found: {filename}")
+        return 0
+    try:
+        # Use ffprobe to get duration
+        args = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename]
+        popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = popen.communicate()
+        if popen.returncode == 0 and stdout:
+             return float(stdout.strip())
+        else:
+            # Log ffprobe errors if any
+            error_output = stderr.decode('utf-8').strip()
+            print(f"Error getting duration for {os.path.basename(filename)} with ffprobe. Return code: {popen.returncode}. Error: {error_output}")
+            # Fallback to pygame if ffprobe fails?
+            try:
+                sound = pygame.mixer.Sound(filename)
+                duration = sound.get_length()
+                del sound
+                print(f"Using pygame duration fallback for {os.path.basename(filename)}: {duration:.2f}s")
+                return duration
+            except Exception as pygame_e:
+                print(f"Pygame fallback failed for {os.path.basename(filename)}: {pygame_e}")
+                return 0 # Return 0 if duration cannot be determined
+    except FileNotFoundError:
+        print("Error: ffprobe command not found. Please ensure ffprobe is installed and in your PATH.")
+        return 0 # Return 0 if ffprobe isn't available
+    except Exception as e:
+        print(f"Unexpected error getting duration for {os.path.basename(filename)}: {e}")
+        return 0 # Return 0 on unexpected errors
+
+
+def calculate_playlist_runtime(playlist_name, playlist_details):
+    """Calculates the total runtime of a playlist in minutes."""
+    songs = playlist_details.get("song_order", [])
+    if not songs:
+        return 0.0
+    total_runtime_sec = 0
+    print(f"Calculating runtime for '{playlist_name}'...") # Debug print
+    for song_path in songs:
+        duration = get_song_duration(song_path)
+        # print(f"  - {os.path.basename(song_path)}: {duration:.2f}s") # Debug print per song
+        total_runtime_sec += duration
+    runtime_min = round(total_runtime_sec / 60, 1)
+    print(f"Total runtime for '{playlist_name}': {runtime_min} minutes") # Debug print
+    return runtime_min
+
+# --- Function to Calculate All Runtimes Once ---
+def calculate_and_store_all_runtimes():
+    """Calculates runtimes for all playlists and stores them globally."""
+    global playlist_runtimes, persistent_data
+    print("Calculating initial runtimes for all playlists...")
+    all_playlists = get_playlists() # Make sure we have the list
+    all_details = persistent_data.get("playlist_details", {})
+    new_runtimes = {}
+    for pl_name in all_playlists:
+        details = all_details.get(pl_name)
+        if details: # Check if details exist for the playlist
+            runtime = calculate_playlist_runtime(pl_name, details)
+            new_runtimes[pl_name] = runtime
+        else:
+             print(f"Warning: No details found for playlist '{pl_name}' during initial runtime calculation.")
+             new_runtimes[pl_name] = 0.0 # Store 0 if no details
+    playlist_runtimes = new_runtimes
+    print("Finished calculating initial runtimes.")
+
+# --- End Runtime Calculation Helpers ---
 
 def _get_ordered_songs_for_playlist(playlist_name):
     """Gets the list of song file paths for a playlist, respecting saved order."""
@@ -365,7 +439,7 @@ def get_status():
     current_song_filename = None
     current_position_sec = 0
     current_playlist_songs_filenames = []
-    all_playlist_details = persistent_data.get("playlist_details", {})
+    all_playlist_details = persistent_data.get("playlist_details", {}).copy() # Copy to modify safely
 
     try:
         is_busy = pygame.mixer.music.get_busy()
@@ -447,12 +521,21 @@ def get_status():
             current_song_filename = os.path.basename(current_playlist_files[current_track_index])
             current_playlist_songs_filenames = [os.path.basename(f) for f in current_playlist_files]
 
+        # Add stored runtimes to the details to be sent
+        all_playlists = get_playlists() # Ensure we have the latest list
+        for pl_name in all_playlists:
+             if pl_name in all_playlist_details:
+                  details = all_playlist_details[pl_name]
+                  # Get stored runtime, default to 0.0 if not found (e.g., new playlist)
+                  details['runtime_minutes'] = playlist_runtimes.get(pl_name, 0.0)
+             # No need for an else here, if details don't exist, runtime won't be added.
+
         status = {
             'state': state,
             'current_playlist': current_playlist_name,
             'current_song': current_song_filename,
             'volume': round(pygame.mixer.music.get_volume() * 100),
-            'playlists': get_playlists(),
+            'playlists': all_playlists,
             'playlist_details': all_playlist_details,
             'current_playlist_songs': current_playlist_songs_filenames,
             'current_position_sec': current_position_sec,
@@ -467,6 +550,7 @@ def get_status():
             'current_song': None,
             'volume': 0,
             'playlists': get_playlists(),
+            'playlists': all_playlists, # Use list calculated earlier
             'error_message': str(e),
             'playlist_details': all_playlist_details,
             'current_playlist_songs': [],
@@ -1162,7 +1246,7 @@ def rename_playlist():
 @app.route('/rename_song', methods=['POST'])
 def rename_song():
     """Renames a song file and updates all references."""
-    global persistent_data, current_playlist_files, current_track_index
+    global persistent_data, current_playlist_files, current_track_index, playlist_runtimes # Add playlist_runtimes
     data = request.get_json()
     playlist_name = data.get('playlist_name')
     old_name = data.get('old_name')  # Can be basename or full path
@@ -1221,6 +1305,12 @@ def rename_song():
         # Save changes
         save_persistent_data()
 
+        # Recalculate runtime for the affected playlist after rename
+        if playlist_name in persistent_data.get("playlist_details", {}):
+            details = persistent_data["playlist_details"][playlist_name]
+            playlist_runtimes[playlist_name] = calculate_playlist_runtime(playlist_name, details)
+            print(f"Recalculated runtime for '{playlist_name}' after song rename: {playlist_runtimes[playlist_name]} min")
+
         return jsonify({
             'status': 'success',
             'message': f'Renamed song from {old_basename} to {new_name}',
@@ -1233,4 +1323,5 @@ def rename_song():
 if __name__ == '__main__':
     # Use 0.0.0.0 to make it accessible on your network
     # Turn off debug mode for potential production use or if causing issues
+    calculate_and_store_all_runtimes() # Calculate runtimes once on startup
     app.run(debug=False, host='0.0.0.0', port=5522)
