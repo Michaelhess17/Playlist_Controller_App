@@ -5,7 +5,7 @@ A simple Flask-based web interface to control music playback for a wedding.
 ## Status
 
 [![Python CI](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ci.yml/badge.svg)](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ci.yml)
-[![Ruff](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/pylint.yml/badge.svg)](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/pylint.yml)
+[![Ruff](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ruff.yml/badge.svg)](https://github.com/Michaelhess17/Playlist_Controller_App/actions/workflows/ruff.yml)
 
 ## Features
 
